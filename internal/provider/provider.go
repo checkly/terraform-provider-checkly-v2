@@ -5,7 +5,9 @@ package provider
 
 import (
 	"context"
-	"net/http"
+	"github.com/checkly/checkly-go-sdk"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -25,9 +27,10 @@ type ScaffoldingProvider struct {
 	version string
 }
 
-// ScaffoldingProviderModel describes the provider data model.
-type ScaffoldingProviderModel struct {
-	Endpoint types.String `tfsdk:"endpoint"`
+type ChecklyProviderModel struct {
+	ApiKey    types.String `tfsdk:"api_key"`
+	ApiUrl    types.String `tfsdk:"api_url"`
+	AccountId types.String `tfsdk:"account_id"`
 }
 
 func (p *ScaffoldingProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -37,9 +40,18 @@ func (p *ScaffoldingProvider) Metadata(ctx context.Context, req provider.Metadat
 
 func (p *ScaffoldingProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
+
 		Attributes: map[string]schema.Attribute{
-			"endpoint": schema.StringAttribute{
-				MarkdownDescription: "Example provider attribute",
+			"account_id": schema.StringAttribute{
+				MarkdownDescription: "The Checkly AccountId to be used",
+				Optional:            true,
+			},
+			"api_url": schema.StringAttribute{
+				MarkdownDescription: "The Checkly backend to be used",
+				Optional:            true,
+			},
+			"api_key": schema.StringAttribute{
+				MarkdownDescription: "The Checkly API-Key to be used",
 				Optional:            true,
 			},
 		},
@@ -47,7 +59,8 @@ func (p *ScaffoldingProvider) Schema(ctx context.Context, req provider.SchemaReq
 }
 
 func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var data ScaffoldingProviderModel
+	tflog.Info(ctx, "Configure")
+	var data ChecklyProviderModel
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
@@ -55,18 +68,39 @@ func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.Config
 		return
 	}
 
-	// Configuration values are now available.
-	// if data.Endpoint.IsNull() { /* ... */ }
+	apiKey := os.Getenv("CHECKLY_API_KEY")
+	apiUrl := os.Getenv("CHECKLY_API_URL")
+	accountId := os.Getenv("CHECKLY_ACCOUNT_ID")
+	/*"https://api.checklyhq.com"*/
+	if !data.AccountId.IsNull() {
+		accountId = data.AccountId.ValueString()
+	}
 
-	// Example client configuration for data sources and resources
-	client := http.DefaultClient
+	if !data.ApiUrl.IsNull() {
+		apiUrl = data.ApiUrl.ValueString()
+	}
+
+	client := checkly.NewClient(
+		apiUrl,
+		apiKey,
+		nil,
+		nil,
+	)
+	checklyApiSource := os.Getenv("CHECKLY_API_SOURCE")
+	if checklyApiSource == "" {
+		checklyApiSource = "TF"
+	}
+
+	client.SetAccountId(accountId)
+	client.SetChecklySource("checklyApiSource")
+
 	resp.DataSourceData = client
 	resp.ResourceData = client
 }
 
 func (p *ScaffoldingProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewExampleResource,
+		NewEnvironmentVariableResource,
 	}
 }
 
