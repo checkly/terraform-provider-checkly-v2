@@ -1,64 +1,46 @@
-# Terraform Provider Scaffolding (Terraform Plugin Framework)
+<p>
+  <img height="128" src="https://cdn.checklyhq.com/logos/racoon_logo.svg" align="right" />
+  <h1>Checkly Terraform Provider</h1>
+</p>
 
-_This template repository is built on the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework). The template repository built on the [Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) can be found at [terraform-provider-scaffolding](https://github.com/hashicorp/terraform-provider-scaffolding). See [Which SDK Should I Use?](https://www.terraform.io/docs/plugin/which-sdk.html) in the Terraform documentation for additional information._
+![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)
+[![Tests](https://github.com/checkly/terraform-provider-checkly/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/checkly/terraform-provider-checkly/actions/workflows/test.yml)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/checkly/terraform-provider-checkly)
+![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/checkly/terraform-provider-checkly?label=Version)
 
-This repository is a *template* for a [Terraform](https://www.terraform.io) provider. It is intended as a starting point for creating Terraform providers, containing:
+This Terraform provider enables users to handle [Checkly](https://checklyhq.com) resources. Manage your checks, groups, alert channels and more and start declaring your monitoring setup as code.
 
-- A resource and a data source (`internal/provider/`),
-- Examples (`examples/`) and generated documentation (`docs/`),
-- Miscellaneous meta files.
+## Installation
+Please take a look at the [installation guide](https://github.com/checkly/terraform-provider-checkly/blob/main/docs/guides/getting-started.md)
 
-These files contain boilerplate code that you will need to edit to create your own Terraform provider. Tutorials for creating Terraform providers can be found on the [HashiCorp Learn](https://learn.hashicorp.com/collections/terraform/providers-plugin-framework) platform. _Terraform Plugin Framework specific guides are titled accordingly._
+> If you're still using Terraform 0.12 please refer to [terraform 0.12 documentation](https://github.com/checkly/terraform-provider-checkly/blob/main/docs/guides/support-for-terraform-0.12.md)
 
-Please see the [GitHub template repository documentation](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for how to create a new repository from this template on GitHub.
+## Getting started
+For documentation and example usage see:
+1. [Checkly's documentation and getting started guide](https://www.checklyhq.com/docs/terraform-provider).
+2. [The official provider resource documentation](https://registry.terraform.io/providers/checkly/checkly/latest/docs).
+3. [Working demo](https://github.com/checkly/checkly-terraform-getting-started).
 
-Once you've written your provider, you'll want to [publish it on the Terraform Registry](https://www.terraform.io/docs/registry/providers/publishing.html) so that others can use it.
+## Questions
+For questions and support please open a new  [discussion](https://github.com/checkly/terraform-provider-checkly/discussions). The issue list of this repo is exclusively for bug reports and feature/docs requests.
 
-## Requirements
+## Issues
+Please make sure to respect issue requirements and choose the proper [issue template](https://github.com/checkly/terraform-provider-checkly/issues/new/choose) when opening an issue. Issues not conforming to the guidelines may be closed.
 
-- [Terraform](https://www.terraform.io/downloads.html) >= 1.0
-- [Go](https://golang.org/doc/install) >= 1.19
+## Contribution
+Please make sure to read the [Contributing Guide](https://github.com/checkly/terraform-provider-checkly/blob/main/CONTRIBUTING.md) before making a pull request.
 
-## Building The Provider
+## License
 
-1. Clone the repository
-1. Enter the repository directory
-1. Build the provider using the Go `install` command:
+[MIT](https://github.com/checkly/terraform-checkly-provider/blob/main/LICENSE)
 
-```shell
-go install
-```
-
-## Adding Dependencies
-
-This provider uses [Go modules](https://github.com/golang/go/wiki/Modules).
-Please see the Go documentation for the most up to date information about using Go modules.
-
-To add a new dependency `github.com/author/dependency` to your Terraform provider:
-
-```shell
-go get github.com/author/dependency
-go mod tidy
-```
-
-Then commit the changes to `go.mod` and `go.sum`.
-
-## Using the provider
-
-Fill this in for each provider
-
-## Developing the Provider
-
-If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
-
-To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
-
-To generate or update documentation, run `go generate`.
-
-In order to run the full suite of Acceptance tests, run `make testacc`.
-
-*Note:* Acceptance tests create real resources, and often cost money to run.
-
-```shell
-make testacc
-```
+<br>
+<p align="center">
+  <a href="https://cdn.checklyhq.com/logos/checkly_racoon_logo_horizontal.svg" target="_blank">
+  <img width="100px" src="https://www.checklyhq.com/images/text_racoon_logo.svg" alt="Checkly" />
+  </a>
+  <br />
+  <i><sub>Code, test, and deploy synthetic monitoring at scale</sub></i>
+  <br>
+  <b><sub>From Checkly with ♥️</sub></b>
+<p>
