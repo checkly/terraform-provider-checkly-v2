@@ -24,17 +24,20 @@ type ChecklyProvider struct {
 	version string
 }
 
+// ChecklyProviderModel contains the provider configuration. See Schema and Configure() for more info.
 type ChecklyProviderModel struct {
 	ApiKey    types.String `tfsdk:"api_key"`
 	ApiUrl    types.String `tfsdk:"api_url"`
 	AccountId types.String `tfsdk:"account_id"`
 }
 
+// Metadata returns the provider metadata. The name 'checkly' is used in all resources as a prefix.
 func (p *ChecklyProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "checkly"
 	resp.Version = p.version
 }
 
+// Schema defines the variables for the provider. See Configure() for more info.
 func (p *ChecklyProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 
@@ -55,6 +58,17 @@ func (p *ChecklyProvider) Schema(ctx context.Context, req provider.SchemaRequest
 	}
 }
 
+// Configure is called to initialize the provider with configuration values.
+// You need to set the following terraform variables:
+// - api_key
+// - account_id
+// - api_url (optional)
+// put them in a file called `terraform.tfvars` in the root of your terraform project or use terraform CLI's -var-file="myvars.tfvars" argument
+// example: terraform apply  -var-file="dev-secrets.tfvars"
+// alternatively you can set the following environment variables that will override any TF variables:
+// - CHECKLY_API_KEY
+// - CHECKLY_ACCOUNT_ID
+// - CHECKLY_API_URL (optional)
 func (p *ChecklyProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	tflog.Info(ctx, "Configure")
 	var data ChecklyProviderModel
@@ -102,12 +116,14 @@ func (p *ChecklyProvider) Configure(ctx context.Context, req provider.ConfigureR
 	resp.ResourceData = client
 }
 
+// Resources returns the list of resources supported by the provider. Add new Resources here.
 func (p *ChecklyProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewEnvironmentVariableResource,
 	}
 }
 
+// DataSources returns and empty array because we do not have any data sources yet in the Checkly provider.
 func (p *ChecklyProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{}
 }

@@ -28,7 +28,7 @@ type EnvironmentVariableResource struct {
 	client checkly.Client
 }
 
-// EnvironmentVariableResourceModel describes the resource data model.
+// EnvironmentVariableResourceModel describes the resource data model. These fields can be set in .tf files later.
 type EnvironmentVariableResourceModel struct {
 	Key    types.String `tfsdk:"key"`
 	Value  types.String `tfsdk:"value"`
@@ -36,6 +36,7 @@ type EnvironmentVariableResourceModel struct {
 	Id     types.String `tfsdk:"id"`
 }
 
+// ToChecklyEntity converts the resource data model to a Checkly entity.
 func (r *EnvironmentVariableResourceModel) ToChecklyEntity() checkly.EnvironmentVariable {
 	return checkly.EnvironmentVariable{
 		Key:    r.Key.ValueString(),
@@ -44,12 +45,14 @@ func (r *EnvironmentVariableResourceModel) ToChecklyEntity() checkly.Environment
 	}
 }
 
+// UpdateWithChecklyEntity updates the resource data model with the given Checkly entity.
 func (r *EnvironmentVariableResourceModel) UpdateWithChecklyEntity(environmentVar *checkly.EnvironmentVariable) {
 	r.Key = types.StringValue(environmentVar.Key)
 	r.Value = types.StringValue(environmentVar.Value)
 	r.Locked = types.BoolValue(environmentVar.Locked)
 }
 
+// Metadata sets the resource name, the provider type name is "checkly".
 func (r *EnvironmentVariableResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_environment_variable"
 }
@@ -86,6 +89,7 @@ func (r *EnvironmentVariableResource) Schema(ctx context.Context, req resource.S
 	}
 }
 
+// Configure prepares the checkly.Client for use by the resource.
 func (r *EnvironmentVariableResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {
@@ -99,7 +103,6 @@ func (r *EnvironmentVariableResource) Configure(ctx context.Context, req resourc
 			"Unexpected Resource Configure Type",
 			fmt.Sprintf("Expected *checkly.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
-
 		return
 	}
 
