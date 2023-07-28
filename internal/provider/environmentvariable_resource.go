@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"strings"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -35,12 +36,18 @@ type EnvironmentVariableResourceModel struct {
 	Id     types.String `tfsdk:"id"`
 }
 
-func (r *EnvironmentVariableResourceModel) ToCheckly() checkly.EnvironmentVariable {
+func (r *EnvironmentVariableResourceModel) ToChecklyEntity() checkly.EnvironmentVariable {
 	return checkly.EnvironmentVariable{
 		Key:    r.Key.ValueString(),
 		Value:  r.Value.ValueString(),
 		Locked: r.Locked.ValueBool(),
 	}
+}
+
+func (r *EnvironmentVariableResourceModel) UpdateWithChecklyEntity(environmentVar *checkly.EnvironmentVariable) {
+	r.Key = types.StringValue(environmentVar.Key)
+	r.Value = types.StringValue(environmentVar.Value)
+	r.Locked = types.BoolValue(environmentVar.Locked)
 }
 
 func (r *EnvironmentVariableResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -109,14 +116,14 @@ func (r *EnvironmentVariableResource) Create(ctx context.Context, req resource.C
 		return
 	}
 	// save into the Terraform state.
-	environmentVariable, err := r.client.CreateEnvironmentVariable(ctx, data.ToCheckly())
+	environmentVariable, err := r.client.CreateEnvironmentVariable(ctx, data.ToChecklyEntity())
 	if err != nil {
 		resp.Diagnostics.AddError("Creating environment variable with Checkly Go-SDK failed", "Checkly Go-SDK error:"+err.Error())
 		return
 	}
 	data.Id = types.StringValue(environmentVariable.Key)
 
-	tflog.Trace(ctx, "created a resource")
+	tflog.Trace(ctx, "created a new environment variable", map[string]interface{}{"variable": data.Key.ValueString(), "locked": data.Locked.ValueBool(), "id": data.Id.ValueString()})
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -132,14 +139,20 @@ func (r *EnvironmentVariableResource) Read(ctx context.Context, req resource.Rea
 		return
 	}
 	environmentVar, err := r.client.GetEnvironmentVariable(ctx, data.Id.ValueString())
+	if err != nil && strings.Contains(err.Error(), "404") {
+		//if resource is deleted remotely, then mark it as
+		//successfully gone by unsetting it's ID
+		tflog.Debug(ctx, "environment variable not found, assuming it was deleted",
+			map[string]interface{}{"variable": data.Key.ValueString(), "locked": data.Locked.ValueBool(), "id": data.Id.ValueString()})
+		data.Id = types.StringValue("")
+		return
+	}
 	if err != nil {
 		resp.Diagnostics.AddError("Getting environment variable with Checkly Go-SDK failed", "Checkly Go-SDK error:"+err.Error())
 		return
 	}
-	data.Id = types.StringValue(environmentVar.Key)
-	data.Key = types.StringValue(environmentVar.Key)
-	data.Value = types.StringValue(environmentVar.Value)
-	data.Locked = types.BoolValue(environmentVar.Locked)
+	tflog.Trace(ctx, "read environment variable", map[string]interface{}{"variable": data.Key.ValueString(), "locked": data.Locked.ValueBool(), "id": data.Id.ValueString()})
+	data.UpdateWithChecklyEntity(environmentVar)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -154,15 +167,14 @@ func (r *EnvironmentVariableResource) Update(ctx context.Context, req resource.U
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	updatedEnvVar, err := r.client.UpdateEnvironmentVariable(ctx, data.Id.ValueString(), data.ToCheckly())
+	tflog.Trace(ctx, "updating environment variable", map[string]interface{}{"variable": data.Key.ValueString(), "locked": data.Locked.ValueBool(), "id": data.Id.ValueString()})
+	updatedEnvVar, err := r.client.UpdateEnvironmentVariable(ctx, data.Id.ValueString(), data.ToChecklyEntity())
 	if err != nil {
 		resp.Diagnostics.AddError("Updating environment variable with Checkly Go-SDK failed", "Checkly Go-SDK error:"+err.Error())
 		return
 	}
-	data.Id = types.StringValue(updatedEnvVar.Key)
-	data.Value = types.StringValue(updatedEnvVar.Value)
-	data.Key = types.StringValue(updatedEnvVar.Key)
-	data.Locked = types.BoolValue(updatedEnvVar.Locked)
+	data.UpdateWithChecklyEntity(updatedEnvVar)
+	tflog.Trace(ctx, "updated environment variable", map[string]interface{}{"variable": data.Key.ValueString(), "locked": data.Locked.ValueBool(), "id": data.Id.ValueString()})
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -181,6 +193,7 @@ func (r *EnvironmentVariableResource) Delete(ctx context.Context, req resource.D
 		resp.Diagnostics.AddError("Deleting environment variable with Checkly Go-SDK failed", "Checkly Go-SDK error:"+err.Error())
 		return
 	}
+	tflog.Trace(ctx, "deleted environment variable", map[string]interface{}{"variable": data.Key.ValueString(), "locked": data.Locked.ValueBool(), "id": data.Id.ValueString()})
 }
 
 func (r *EnvironmentVariableResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
