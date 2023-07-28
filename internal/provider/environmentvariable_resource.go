@@ -35,6 +35,14 @@ type EnvironmentVariableResourceModel struct {
 	Id     types.String `tfsdk:"id"`
 }
 
+func (r *EnvironmentVariableResourceModel) ToCheckly() checkly.EnvironmentVariable {
+	return checkly.EnvironmentVariable{
+		Key:    r.Key.ValueString(),
+		Value:  r.Value.ValueString(),
+		Locked: r.Locked.ValueBool(),
+	}
+}
+
 func (r *EnvironmentVariableResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_environment_variable"
 }
@@ -101,11 +109,7 @@ func (r *EnvironmentVariableResource) Create(ctx context.Context, req resource.C
 		return
 	}
 	// save into the Terraform state.
-	environmentVariable, err := r.client.CreateEnvironmentVariable(ctx, checkly.EnvironmentVariable{
-		Key:    data.Key.ValueString(),
-		Value:  data.Value.ValueString(),
-		Locked: data.Locked.ValueBool(),
-	})
+	environmentVariable, err := r.client.CreateEnvironmentVariable(ctx, data.ToCheckly())
 	if err != nil {
 		resp.Diagnostics.AddError("Creating environment variable with Checkly Go-SDK failed", "Checkly Go-SDK error:"+err.Error())
 		return
@@ -150,11 +154,7 @@ func (r *EnvironmentVariableResource) Update(ctx context.Context, req resource.U
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	updatedEnvVar, err := r.client.UpdateEnvironmentVariable(ctx, data.Id.ValueString(), checkly.EnvironmentVariable{
-		Key:    data.Key.ValueString(),
-		Value:  data.Value.ValueString(),
-		Locked: data.Locked.ValueBool(),
-	})
+	updatedEnvVar, err := r.client.UpdateEnvironmentVariable(ctx, data.Id.ValueString(), data.ToCheckly())
 	if err != nil {
 		resp.Diagnostics.AddError("Updating environment variable with Checkly Go-SDK failed", "Checkly Go-SDK error:"+err.Error())
 		return
