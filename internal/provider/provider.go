@@ -1,6 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 package provider
 
 import (
@@ -16,11 +13,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// Ensure ScaffoldingProvider satisfies various provider interfaces.
-var _ provider.Provider = &ScaffoldingProvider{}
+// Ensure ChecklyProvider satisfies various provider interfaces.
+var _ provider.Provider = &ChecklyProvider{}
 
-// ScaffoldingProvider defines the provider implementation.
-type ScaffoldingProvider struct {
+// ChecklyProvider defines the provider implementation.
+type ChecklyProvider struct {
 	// version is set to the provider version on release, "dev" when the
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
@@ -33,12 +30,12 @@ type ChecklyProviderModel struct {
 	AccountId types.String `tfsdk:"account_id"`
 }
 
-func (p *ScaffoldingProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "scaffolding"
+func (p *ChecklyProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "checkly"
 	resp.Version = p.version
 }
 
-func (p *ScaffoldingProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *ChecklyProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 
 		Attributes: map[string]schema.Attribute{
@@ -58,7 +55,7 @@ func (p *ScaffoldingProvider) Schema(ctx context.Context, req provider.SchemaReq
 	}
 }
 
-func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+func (p *ChecklyProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	tflog.Info(ctx, "Configure")
 	var data ChecklyProviderModel
 
@@ -69,11 +66,19 @@ func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.Config
 	}
 
 	apiKey := os.Getenv("CHECKLY_API_KEY")
+
 	apiUrl := os.Getenv("CHECKLY_API_URL")
+	if apiUrl == "" {
+		apiUrl = "https://api.checklyhq.com"
+	}
+
 	accountId := os.Getenv("CHECKLY_ACCOUNT_ID")
-	/*"https://api.checklyhq.com"*/
-	if !data.AccountId.IsNull() {
+	if accountId == "" && !data.AccountId.IsNull() {
 		accountId = data.AccountId.ValueString()
+	}
+	if accountId == "" {
+		resp.Diagnostics.AddError("'account_id' variable is missing.", "Please set the 'CHECKLY_ACCOUNT_ID' environment variable or the terraform variable 'account_id'")
+		return
 	}
 
 	if !data.ApiUrl.IsNull() {
@@ -92,27 +97,24 @@ func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.Config
 	}
 
 	client.SetAccountId(accountId)
-	client.SetChecklySource("checklyApiSource")
+	client.SetChecklySource(checklyApiSource)
 
-	resp.DataSourceData = client
 	resp.ResourceData = client
 }
 
-func (p *ScaffoldingProvider) Resources(ctx context.Context) []func() resource.Resource {
+func (p *ChecklyProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewEnvironmentVariableResource,
 	}
 }
 
-func (p *ScaffoldingProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{
-		NewExampleDataSource,
-	}
+func (p *ChecklyProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+	return []func() datasource.DataSource{}
 }
 
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
-		return &ScaffoldingProvider{
+		return &ChecklyProvider{
 			version: version,
 		}
 	}

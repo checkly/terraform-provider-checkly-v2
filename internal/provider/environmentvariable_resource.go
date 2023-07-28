@@ -1,16 +1,15 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 package provider
 
 import (
 	"context"
 	"fmt"
-	"net/http"
-
+	"github.com/checkly/checkly-go-sdk"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -25,7 +24,7 @@ func NewEnvironmentVariableResource() resource.Resource {
 
 // EnvironmentVariableResource defines the resource implementation.
 type EnvironmentVariableResource struct {
-	client *http.Client
+	client checkly.Client
 }
 
 // EnvironmentVariableResourceModel describes the resource data model.
@@ -37,26 +36,36 @@ type EnvironmentVariableResourceModel struct {
 }
 
 func (r *EnvironmentVariableResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_example"
+	resp.TypeName = req.ProviderTypeName + "_environment_variable"
 }
 
 func (r *EnvironmentVariableResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		// This description is used by the documentation generator and the language server.
-		MarkdownDescription: "Example resource",
+		MarkdownDescription: "EnvironmentVariable resource",
 
 		Attributes: map[string]schema.Attribute{
 			"key": schema.StringAttribute{
-				MarkdownDescription: "Example configurable attribute",
+				MarkdownDescription: "Key of the environment variable",
 				Required:            true,
 			},
 			"value": schema.StringAttribute{
-				MarkdownDescription: "Example configurable attribute with default value",
+				MarkdownDescription: "Value of the environment variable",
 				Required:            true,
 			},
 			"locked": schema.BoolAttribute{
-				Optional:            true,
-				MarkdownDescription: "Example identifier",
+				Optional: true,
+				//apparently values with a default value need to be computed
+				Computed:            true,
+				Default:             booldefault.StaticBool(false),
+				MarkdownDescription: "Whether the environment variable is locked or not. Set to true for storing sensitive data.",
+			},
+			"id": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "The Id of the environment variable",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 	}
@@ -68,12 +77,12 @@ func (r *EnvironmentVariableResource) Configure(ctx context.Context, req resourc
 		return
 	}
 
-	client, ok := req.ProviderData.(*http.Client)
+	client, ok := req.ProviderData.(checkly.Client)
 
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *checkly.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
@@ -91,21 +100,18 @@ func (r *EnvironmentVariableResource) Create(ctx context.Context, req resource.C
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	// If applicable, this is a great opportunity to initialize any necessary
-	// provider client data and make a call using it.
-	// httpResp, err := r.client.Do(httpReq)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create example, got error: %s", err))
-	//     return
-	// }
-
-	// For the purposes of this example code, hardcoding a response value to
 	// save into the Terraform state.
-	data.Id = types.StringValue("example-id")
+	environmentVariable, err := r.client.CreateEnvironmentVariable(ctx, checkly.EnvironmentVariable{
+		Key:    data.Key.ValueString(),
+		Value:  data.Value.ValueString(),
+		Locked: data.Locked.ValueBool(),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Creating environment variable with Checkly Go-SDK failed", "Checkly Go-SDK error:"+err.Error())
+		return
+	}
+	data.Id = types.StringValue(environmentVariable.Key)
 
-	// Write logs using the tflog package
-	// Documentation: https://terraform.io/plugin/log
 	tflog.Trace(ctx, "created a resource")
 
 	// Save data into Terraform state
@@ -121,14 +127,15 @@ func (r *EnvironmentVariableResource) Read(ctx context.Context, req resource.Rea
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	// If applicable, this is a great opportunity to initialize any necessary
-	// provider client data and make a call using it.
-	// httpResp, err := r.client.Do(httpReq)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read example, got error: %s", err))
-	//     return
-	// }
+	environmentVar, err := r.client.GetEnvironmentVariable(ctx, data.Id.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Getting environment variable with Checkly Go-SDK failed", "Checkly Go-SDK error:"+err.Error())
+		return
+	}
+	data.Id = types.StringValue(environmentVar.Key)
+	data.Key = types.StringValue(environmentVar.Key)
+	data.Value = types.StringValue(environmentVar.Value)
+	data.Locked = types.BoolValue(environmentVar.Locked)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -143,15 +150,19 @@ func (r *EnvironmentVariableResource) Update(ctx context.Context, req resource.U
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	// If applicable, this is a great opportunity to initialize any necessary
-	// provider client data and make a call using it.
-	// httpResp, err := r.client.Do(httpReq)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update example, got error: %s", err))
-	//     return
-	// }
-
+	updatedEnvVar, err := r.client.UpdateEnvironmentVariable(ctx, data.Id.ValueString(), checkly.EnvironmentVariable{
+		Key:    data.Key.ValueString(),
+		Value:  data.Value.ValueString(),
+		Locked: data.Locked.ValueBool(),
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("Updating environment variable with Checkly Go-SDK failed", "Checkly Go-SDK error:"+err.Error())
+		return
+	}
+	data.Id = types.StringValue(updatedEnvVar.Key)
+	data.Value = types.StringValue(updatedEnvVar.Value)
+	data.Key = types.StringValue(updatedEnvVar.Key)
+	data.Locked = types.BoolValue(updatedEnvVar.Locked)
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -165,14 +176,11 @@ func (r *EnvironmentVariableResource) Delete(ctx context.Context, req resource.D
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	// If applicable, this is a great opportunity to initialize any necessary
-	// provider client data and make a call using it.
-	// httpResp, err := r.client.Do(httpReq)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete example, got error: %s", err))
-	//     return
-	// }
+	err := r.client.DeleteEnvironmentVariable(ctx, data.Key.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Deleting environment variable with Checkly Go-SDK failed", "Checkly Go-SDK error:"+err.Error())
+		return
+	}
 }
 
 func (r *EnvironmentVariableResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
