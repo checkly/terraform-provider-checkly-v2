@@ -26,11 +26,6 @@ func TestAccEnvironmentVariableResource(t *testing.T) {
 				ResourceName:      "checkly_environment_variable.variable-1",
 				ImportState:       true,
 				ImportStateVerify: true,
-				// This is not normally necessary, but is here because this
-				// example code does not have an actual upstream service.
-				// Once the Read method is able to refresh information from
-				// the upstream service, this can be removed.
-				//ImportStateVerifyIgnore: []string{"configurable_attribute", "defaulted"},
 			},
 			// Update and Read testing
 			{
